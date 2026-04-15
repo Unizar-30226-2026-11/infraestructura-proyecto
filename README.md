@@ -58,11 +58,18 @@ graph TD
     nano .env
     ```
 
-3.  **Lanzar el sistema:**
+3.  **Dar permisos de ejecución al script (solo la primera vez):**
     ```bash
-    docker compose pull # Descarga las últimas versiones de GHCR
-    docker compose up -d
+    chmod +x deploy.sh
     ```
+
+4.  **Desplegar todo con un solo comando:**
+    ```bash
+    ./deploy.sh
+    ```
+
+    El script valida que existan `.env` y `docker-compose.yaml` en la carpeta actual.
+    Si falta alguno, termina sin ejecutar ninguna acción.
 
 ---
 
@@ -84,8 +91,7 @@ Para desplegar cambios después de un `merge` en los repositorios de frontend o 
 1.  GitHub Actions compilará y subirá las nuevas imágenes automáticamente.
 2.  En el servidor, ejecuta:
     ```bash
-    docker compose pull
-    docker compose up -d
+    ./deploy.sh
     ```
     *Docker detectará qué imágenes han cambiado y reiniciará solo los contenedores necesarios.*
 
