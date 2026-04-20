@@ -26,8 +26,8 @@ run_sync() {
   shift 2 || true
 
   if [[ "$bootstrap_redis" == "true" ]]; then
-    log "Levantando dependencias mínimas (redis)..."
-    docker compose up -d redis
+    log "Levantando dependencias mínimas (db/redis/storage)..."
+    docker compose up -d db redis storage
   fi
 
   if [[ "$mode" == "interactive" ]]; then
@@ -60,8 +60,8 @@ case "$cmd" in
       esac
     done
 
-    log "Levantando dependencias (redis/frontend)..."
-    docker compose up -d redis frontend
+    log "Levantando dependencias (db/redis/storage/frontend)..."
+    docker compose up -d db redis storage #frontend
 
     log "Ejecutando migraciones..."
     if ! docker compose run --rm migrate; then

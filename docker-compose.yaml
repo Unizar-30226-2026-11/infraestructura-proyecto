@@ -1,4 +1,22 @@
 services:
+  # --- POSTGRES LOCAL (Supabase) ---
+  db:
+    image: supabase/postgres:17.6.1.084
+    container_name: postgres_db
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - db_config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   # --- MIGRACIONES (one-shot) ---
   migrate:
     image: ghcr.io/unizar-30226-2026-11/backend-tools:latest
@@ -8,6 +26,8 @@ services:
     command: ["npx", "prisma", "migrate", "deploy"]
     depends_on:
       redis:
+        condition: service_healthy
+      db:
         condition: service_healthy
 
   # --- BACKEND ---
@@ -24,8 +44,39 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      db:
+        condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # --- STORAGE API (Supabase) ---
+  storage:
+    image: supabase/storage-api:v1.44.2
+    container_name: storage_api
+    restart: always
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      PORT: "5000"
+      DATABASE_URL: ${DATABASE_URL}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_KEY}
+      ADMIN_API_KEYS: ${ADMIN_API_KEYS}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      STORAGE_BACKEND: ${STORAGE_BACKEND}
+      STORAGE_FILE_BACKEND_PATH: ${STORAGE_FILE_BACKEND_PATH}
+      FILE_STORAGE_BACKEND_PATH: ${FILE_STORAGE_BACKEND_PATH}
+      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL}
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
+      REGION: ${REGION}
+    volumes:
+      - storage_data:/var/lib/storage
+    depends_on:
+      db:
+        condition: service_healthy
 
   # --- SYNC DE DATOS (one-shot, manual) ---
   sync:
@@ -35,8 +86,12 @@ services:
     env_file:
       - .env
     command: ["npm", "run", "sync:prod", "--"]
+    volumes:
+      - ${SYNC_VOLUME_SOURCE:-sync_data}:${SYNC_VOLUME_TARGET:-/app/sync-data}
     depends_on:
       redis:
+        condition: service_healthy
+      db:
         condition: service_healthy
 
   # --- FRONTEND ---
@@ -65,4 +120,8 @@ services:
       retries: 20
 
 volumes:
+  db_data:
+  db_config:
+  storage_data:
   redis_data:
+  sync_data:

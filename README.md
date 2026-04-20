@@ -1,105 +1,95 @@
-# 🚀 Infraestructura: Proyecto Software
+# Infraestructura del proyecto
 
-Este repositorio contiene la configuración necesaria para desplegar el ecosistema completo de la aplicación utilizando **Docker Compose**. La arquitectura está diseñada para ser totalmente automatizada mediante **CI/CD** con GitHub Actions y **Supabase** como persistencia.
+Este repositorio contiene la infraestructura mínima para desplegar la aplicación con Docker Compose. La pila incluye un frontend, un backend, Redis y dos servicios auxiliares para migraciones y sincronización de datos.
 
-## 🏗️ Arquitectura del Sistema
+## Arquitectura
 
-El siguiente diagrama ilustra cómo interactúan los componentes. Es importante notar que el **Frontend (Angular)** se ejecuta en el navegador del cliente, no dentro de la red interna de Docker.
+Los contenedores definidos en este repositorio son:
+
+- `db`: PostgreSQL de Supabase, expuesto en el puerto `5432`.
+- `storage`: Storage API de Supabase, expuesto en el puerto `5000`.
+- `frontend`: expone la interfaz web en el puerto `80`.
+- `backend`: expone la API en el puerto `3000`.
+- `redis`: almacena caché y estado temporal, con persistencia en un volumen local.
+- `migrate`: ejecuta migraciones Prisma antes de levantar el backend.
+- `sync`: servicio manual para tareas de sincronización en producción.
 
 ```mermaid
 graph TD
-    subgraph "Navegador del Usuario"
-        A[Angular SPA]
-    end
-
-    subgraph "Servidor (Docker Compose)"
-        B[Nginx Container]
-        C[Backend Node.js]
-        D[Redis Cache]
-    end
-
-    subgraph "Cloud Services"
-        E[Supabase DB & Storage]
-        F[GHCR.io Registry]
-    end
-
-    %% Flujos
-    F -->|Pull Images| B
-    F -->|Pull Images| C
-    B -->|Sirve archivos estáticos| A
-    A -->|Peticiones API HTTP| C
-    A -->|Auth & SDK Directo| E
-    C -->|Queries| E
-    C -->|Cache| D
+    U[Navegador del usuario] --> F[Frontend]
+    F --> B[Backend]
+    B --> R[Redis]
+   B --> S[Storage API]
+   B --> D[Postgres]
+    M[Migraciones Prisma] --> R
+   X[Sync manual] --> R
+   S --> D
+   B --> D
 ```
 
----
+## Requisitos
 
-## 🛠️ Requisitos Previos
+- Docker con Docker Compose v2.
+- Acceso a las imágenes publicadas en GitHub Container Registry.
+- Un archivo `.env` válido en la raíz del repositorio, copiado desde `.env.example`.
 
-* **Docker** y **Docker Compose** instalado en el servidor.
-* Acceso a las imágenes en **GitHub Container Registry (GHCR)**.
-* Instancia de **Supabase** configurada.
+## Despliegue
 
----
+1. Copia el archivo de ejemplo y ajusta los valores reales:
 
-## 🚀 Despliegue Rápido
+   ```bash
+   cp .env.example .env
+   ```
 
-1.  **Clonar este repositorio:**
-    ```bash
-    git clone https://github.com/tu-organizacion/deploy-proyecto-software.git
-    cd deploy-proyecto-software
-    ```
+2. Verifica que el script tenga permisos de ejecución:
 
-2.  **Configurar variables de entorno:**
-    Crea un archivo `.env` basado en el ejemplo:
-    ```bash
-    cp .env.example .env
-    nano .env
-    ```
+   ```bash
+   chmod +x deploy.sh
+   ```
 
-3.  **Dar permisos de ejecución al script (solo la primera vez):**
-    ```bash
-    chmod +x deploy.sh
-    ```
+3. Lanza el despliegue:
 
-4.  **Desplegar todo con un solo comando:**
-    ```bash
-    ./deploy.sh
-    ```
+   ```bash
+   ./deploy.sh deploy
+   ```
 
-    El script valida que existan `.env` y `docker-compose.yaml` en la carpeta actual.
-    Si falta alguno, termina sin ejecutar ninguna acción.
+El script comprueba que existan `.env` y `docker-compose.yaml`, levanta primero `db`, `redis` y `frontend`, ejecuta `migrate`, y solo si todo sale bien arranca `backend`.
 
----
+## Sync manual
 
-## 📋 Variables de Entorno (.env)
+Si necesitas ejecutar la tarea de sincronización del backend tools, usa:
 
-| Variable | Descripción |
-| :--- | :--- |
-| `DATABASE_URL` | URL de conexión de Supabase (PostgreSQL). |
-| `REDIS_URL` | URL interna de Redis (`redis://redis:6379`). |
-| `JWT_SECRET` | Clave para la firma de tokens en el backend. |
-| `API_URL` | (Opcional) URL donde el frontend buscará el backend. |
+```bash
+./deploy.sh sync
+```
 
----
+También puedes pasar modo interactivo o argumentos adicionales:
 
-## 🔄 Proceso de Actualización
+```bash
+./deploy.sh sync interactive
+./deploy.sh deploy --with-sync --sync-mode non-interactive -- --help
+```
 
-Para desplegar cambios después de un `merge` en los repositorios de frontend o backend:
+## Variables de entorno
 
-1.  GitHub Actions compilará y subirá las nuevas imágenes automáticamente.
-2.  En el servidor, ejecuta:
-    ```bash
-    ./deploy.sh
-    ```
-    *Docker detectará qué imágenes han cambiado y reiniciará solo los contenedores necesarios.*
+El archivo `.env.example` ya deja preparados los valores locales para:
 
----
+- PostgreSQL de Supabase.
+- Storage API en modo file backend.
+- Redis interno de Docker.
+- Claves JWT/servicio/anon coherentes entre backend y storage.
+- La URL del frontend y la API del backend.
+- El volumen del servicio `sync` mediante `SYNC_VOLUME_MOUNT`.
 
-## 💡 Notas sobre el Frontend (Angular)
+Para `sync`, puedes elegir el tipo de volumen con:
 
-Como el frontend es una **Single Page Application (SPA)**:
-* El contenedor de Nginx solo sirve los archivos `.js` y `.html`.
-* **No tiene acceso a la red interna de Docker** desde el navegador del usuario. 
-* Asegúrate de que el `API_URL` en el frontend apunte a la IP pública o dominio del servidor, no a `localhost`.
+- `SYNC_VOLUME_MOUNT="sync_data:/app/sync-data"` para usar volumen nombrado (por defecto).
+- `SYNC_VOLUME_MOUNT="./sync-data:/app/sync-data"` para usar bind mount desde el host.
+
+## Notas operativas
+
+- Redis se ejecuta como servicio interno en Docker y usa un volumen llamado `redis_data`.
+- PostgreSQL usa los volúmenes `db_data` y `db_config` para persistencia y configuración.
+- Storage usa el volumen `storage_data` para el backend de ficheros.
+- Las migraciones fallan de forma explícita si el servicio `migrate` devuelve error; en ese caso el backend no se arranca.
+- Si despliegas en un servidor remoto, ajusta `CORS_ORIGIN`, `API_URL` y `STORAGE_PUBLIC_URL` a la URL pública real, no a `localhost`.
