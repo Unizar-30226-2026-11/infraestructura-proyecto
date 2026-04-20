@@ -1,16 +1,43 @@
 services:
+  # --- MIGRACIONES (one-shot) ---
+  migrate:
+    image: ghcr.io/unizar-30226-2026-11/backend-tools:latest
+    restart: "no"
+    env_file:
+      - .env
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      redis:
+        condition: service_healthy
+
   # --- BACKEND ---
   backend:
     image: ghcr.io/unizar-30226-2026-11/backend:latest
     container_name: backend_app
     restart: always
-    # Hace falta exponer el puerto al exterior, porque el navegador se conecta al backend
     ports:
       - "3000:3000"
-    depends_on:
-      - redis
     env_file:
       - .env
+    environment:
+      SKIP_MIGRATIONS: "true"
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # --- SYNC DE DATOS (one-shot, manual) ---
+  sync:
+    image: ghcr.io/unizar-30226-2026-11/backend-tools:latest
+    restart: "no"
+    profiles: ["manual"]
+    env_file:
+      - .env
+    command: ["npm", "run", "sync:prod", "--"]
+    depends_on:
+      redis:
+        condition: service_healthy
 
   # --- FRONTEND ---
   frontend:
@@ -22,16 +49,20 @@ services:
     env_file:
       - .env
 
-  # --- REDIS (Caché/Sesiones) ---
+  # --- REDIS ---
   redis:
     image: redis/redis-stack-server:latest
     container_name: redis_server
     restart: always
-    # No es estrictamente necesario exponer el puerto al exterior si solo el back lo usa
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   redis_data:
