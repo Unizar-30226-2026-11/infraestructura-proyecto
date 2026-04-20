@@ -21,9 +21,14 @@ require_prereqs() {
 }
 
 run_sync() {
-  local mode="${1:-non-interactive}"; shift || true
-  log "Levantando dependencias mínimas (redis)..."
-  docker compose up -d redis
+  local mode="${1:-non-interactive}"
+  local bootstrap_redis="${2:-true}"
+  shift 2 || true
+
+  if [[ "$bootstrap_redis" == "true" ]]; then
+    log "Levantando dependencias mínimas (redis)..."
+    docker compose up -d redis
+  fi
 
   if [[ "$mode" == "interactive" ]]; then
     log "Sync interactivo..."
@@ -68,14 +73,14 @@ case "$cmd" in
     docker compose up -d backend
 
     if [[ "$with_sync" == "true" ]]; then
-      run_sync "$sync_mode" "${sync_args[@]}"
+      run_sync "$sync_mode" false "${sync_args[@]}"
     fi
 
     log "Deploy completado."
     docker compose ps
     ;;
   sync)
-    run_sync "${1:-non-interactive}" "${@:2}"
+    run_sync "${1:-non-interactive}" true "${@:2}"
     ;;
   *)
     usage
