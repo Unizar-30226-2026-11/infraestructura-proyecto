@@ -1,18 +1,21 @@
 services:
-  # --- POSTGRES LOCAL (Supabase) ---
+  # --- POSTGRES LOCAL ---
   db:
-    image: supabase/postgres:17.6.1.084
+    image: postgres:17.6
     container_name: postgres_db
     restart: always
     # ports:
     #   - "5432:5432"
     env_file:
       - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_READ_WRITE:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
       - db_data:/var/lib/postgresql/data
-      - db_config:/etc/postgresql-custom
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -h localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER_READ_WRITE:-postgres} -d ${POSTGRES_DB:-postgres} -h localhost"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -49,43 +52,6 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # --- STORAGE API (Supabase) ---
-  storage:
-    image: supabase/storage-api:v1.44.2
-    container_name: storage_api
-    restart: always
-    ports:
-      - "5000:5000"
-    env_file:
-      - .env
-    environment:
-      PORT: "5000"
-      DATABASE_URL: ${DATABASE_URL}
-      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
-      ANON_KEY: ${ANON_KEY}
-      SERVICE_KEY: ${SERVICE_KEY}
-      ADMIN_API_KEYS: ${ADMIN_API_KEYS}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-      STORAGE_BACKEND: ${STORAGE_BACKEND}
-      STORAGE_FILE_BACKEND_PATH: ${STORAGE_FILE_BACKEND_PATH}
-      FILE_STORAGE_BACKEND_PATH: ${FILE_STORAGE_BACKEND_PATH}
-      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL}
-      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
-      REGION: ${REGION}
-    # healthcheck:
-    #   # Verifica que el puerto 5000 responda
-    #   # Usamos /bin/sh para comprobar si el puerto está abierto sin depender de curl
-    #   test: ["CMD-SHELL", "nc -z localhost 5000 || exit 1"]
-    #   interval: 10s
-    #   timeout: 15s
-    #   retries: 5
-    #   start_period: 10s # Le damos 10 seg para arrancar antes de empezar a checkear
-    volumes:
-      - storage_data:/var/lib/storage
-    depends_on:
-      db:
-        condition: service_healthy
-
   # --- SYNC DE DATOS (one-shot, manual) ---
   sync:
     image: ghcr.io/unizar-30226-2026-11/backend-tools:latest
@@ -97,8 +63,6 @@ services:
     volumes:
       - ${SYNC_VOLUME_SOURCE:-sync_data}:${SYNC_VOLUME_TARGET:-/app/sync-data}
     depends_on:
-      storage:
-        condition: service_healthy
       redis:
         condition: service_healthy
       db:
@@ -131,7 +95,5 @@ services:
 
 volumes:
   db_data:
-  db_config:
-  storage_data:
   redis_data:
   sync_data:

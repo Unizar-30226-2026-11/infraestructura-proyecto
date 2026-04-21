@@ -6,8 +6,7 @@ Este repositorio contiene la infraestructura mínima para desplegar la aplicaci�
 
 Los contenedores definidos en este repositorio son:
 
-- `db`: PostgreSQL de Supabase, expuesto en el puerto `5432`.
-- `storage`: Storage API de Supabase, expuesto en el puerto `5000`.
+- `db`: PostgreSQL oficial, expuesto en el puerto `5432`.
 - `frontend`: expone la interfaz web en el puerto `80`.
 - `backend`: expone la API en el puerto `3000`.
 - `redis`: almacena caché y estado temporal, con persistencia en un volumen local.
@@ -19,11 +18,9 @@ graph TD
     U[Navegador del usuario] --> F[Frontend]
     F --> B[Backend]
     B --> R[Redis]
-   B --> S[Storage API]
    B --> D[Postgres]
     M[Migraciones Prisma] --> R
    X[Sync manual] --> R
-   S --> D
    B --> D
 ```
 
@@ -53,7 +50,7 @@ graph TD
    ./deploy.sh deploy
    ```
 
-El script comprueba que existan `.env` y `docker-compose.yaml`, levanta primero `db`, `redis` y `storage`, ejecuta `migrate`, y solo si todo sale bien arranca `backend`.
+El script comprueba que existan `.env` y `docker-compose.yaml`, levanta primero `db` y `redis`, ejecuta `migrate`, y solo si todo sale bien arranca `backend`.
 
 ## Sync manual
 
@@ -73,22 +70,23 @@ También puedes ejecutar sync durante el deploy:
 
 El archivo `.env.example` ya deja preparados los valores locales para:
 
-- PostgreSQL de Supabase.
-- Storage API en modo file backend.
+- PostgreSQL estándar.
 - Redis interno de Docker.
-- Claves JWT/servicio/anon coherentes entre backend y storage.
+- Claves JWT/servicio/anon coherentes entre backend.
 - La URL del frontend y la API del backend.
-- El volumen del servicio `sync` mediante `SYNC_VOLUME_MOUNT`.
+- La fuente y el destino del volumen del servicio `sync` mediante `SYNC_VOLUME_SOURCE` y `SYNC_VOLUME_TARGET`.
 
-Para `sync`, puedes elegir el tipo de volumen con:
+Antes de levantar el entorno, cambia obligatoriamente `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` por los valores de tu propio proyecto o instancia. No deben quedar los valores de ejemplo del repositorio. Esto se debe a que el sistema utiliza el servicio de Supabase Storage en la nube para quitar carga al sistema.
 
-- `SYNC_VOLUME_MOUNT="sync_data:/app/sync-data"` para usar volumen nombrado (por defecto).
-- `SYNC_VOLUME_MOUNT="./sync-data:/app/sync-data"` para usar bind mount desde el host.
+Para `sync`, cambia estas variables según el tipo de volumen que quieras usar:
+
+- `SYNC_VOLUME_SOURCE="sync_data"` para usar un volumen nombrado de Docker, que es el valor por defecto.
+- `SYNC_VOLUME_SOURCE="./sync-data"` para usar un bind mount desde el host.
+- `SYNC_VOLUME_TARGET="/app/sync-data"` solo si quieres cambiar la ruta dentro del contenedor; normalmente no hace falta tocarla.
 
 ## Notas operativas
 
 - Redis se ejecuta como servicio interno en Docker y usa un volumen llamado `redis_data`.
-- PostgreSQL usa los volúmenes `db_data` y `db_config` para persistencia y configuración.
-- Storage usa el volumen `storage_data` para el backend de ficheros.
+- PostgreSQL usa el volumen `db_data` para persistencia.
 - Las migraciones fallan de forma explícita si el servicio `migrate` devuelve error; en ese caso el backend no se arranca.
-- Si despliegas en un servidor remoto, ajusta `CORS_ORIGIN`, `API_URL` y `STORAGE_PUBLIC_URL` a la URL pública real, no a `localhost`.
+- Si despliegas en un servidor remoto, ajusta `CORS_ORIGIN`, `API_URL` y `SUPABASE_URL` a la URL pública real, no a `localhost`.

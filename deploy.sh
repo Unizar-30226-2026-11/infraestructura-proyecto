@@ -25,8 +25,8 @@ run_sync() {
   shift || true
 
   if [[ "$bootstrap_redis" == "true" ]]; then
-    log "Levantando dependencias mínimas (db/redis/storage)..."
-    docker compose up -d db redis storage
+    log "Levantando dependencias mínimas (db/redis)..."
+    docker compose up -d db redis
   fi
 
   log "Sync no interactivo..."
@@ -50,9 +50,8 @@ case "$cmd" in
       esac
     done
 
-    log "Levantando dependencias (db/redis/storage/frontend)..."
-    # docker compose up -d db redis storage #frontend
-    if ! docker compose up -d --wait db redis storage; then
+    log "Levantando dependencias (db/redis/frontend)..."
+    if ! docker compose up -d --wait db redis frontend; then
       err "Las dependencias base no están sanas. Abortando."
       exit 1
     fi
