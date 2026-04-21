@@ -53,7 +53,7 @@ graph TD
    ./deploy.sh deploy
    ```
 
-El script comprueba que existan `.env` y `docker-compose.yaml`, levanta primero `db`, `redis` y `frontend`, ejecuta `migrate`, y solo si todo sale bien arranca `backend`.
+El script comprueba que existan `.env` y `docker-compose.yaml`, levanta primero `db`, `redis` y `storage`, ejecuta `migrate`, y solo si todo sale bien arranca `backend`.
 
 ## Sync manual
 
@@ -63,11 +63,10 @@ Si necesitas ejecutar la tarea de sincronización del backend tools, usa:
 ./deploy.sh sync
 ```
 
-También puedes pasar modo interactivo o argumentos adicionales:
+También puedes ejecutar sync durante el deploy:
 
 ```bash
-./deploy.sh sync interactive
-./deploy.sh deploy --with-sync --sync-mode non-interactive -- --help
+./deploy.sh deploy --with-sync
 ```
 
 ## Variables de entorno

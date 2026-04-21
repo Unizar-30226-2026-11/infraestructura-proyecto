@@ -4,8 +4,8 @@ services:
     image: supabase/postgres:17.6.1.084
     container_name: postgres_db
     restart: always
-    ports:
-      - "5432:5432"
+    # ports:
+    #   - "5432:5432"
     env_file:
       - .env
     volumes:
@@ -85,7 +85,7 @@ services:
     profiles: ["manual"]
     env_file:
       - .env
-    command: ["npm", "run", "sync:prod", "--"]
+    command: ["npm", "run", "sync:prod", "--", "--no-interactive", "${SYNC_VOLUME_TARGET:-/app/sync-data}"]
     volumes:
       - ${SYNC_VOLUME_SOURCE:-sync_data}:${SYNC_VOLUME_TARGET:-/app/sync-data}
     depends_on:
@@ -109,8 +109,8 @@ services:
     image: redis/redis-stack-server:latest
     container_name: redis_server
     restart: always
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:

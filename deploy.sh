@@ -9,8 +9,8 @@ require_file() { [[ -f "$1" ]] || { err "Falta $1"; exit 1; }; }
 usage() {
   cat <<'EOF'
 Uso:
-  ./deploy.sh deploy [--with-sync] [--sync-mode interactive|non-interactive] [-- args...]
-  ./deploy.sh sync [interactive|non-interactive] [args...]
+  ./deploy.sh deploy [--with-sync] [-- args...]
+  ./deploy.sh sync [args...]
 EOF
 }
 
@@ -21,25 +21,17 @@ require_prereqs() {
 }
 
 run_sync() {
-  local mode="${1:-non-interactive}"
-  local bootstrap_redis="${2:-true}"
-  shift 2 || true
+  local bootstrap_redis="${1:-true}"
+  shift || true
 
   if [[ "$bootstrap_redis" == "true" ]]; then
     log "Levantando dependencias mínimas (db/redis/storage)..."
     docker compose up -d db redis storage
   fi
 
-  if [[ "$mode" == "interactive" ]]; then
-    log "Sync interactivo..."
-    docker compose --profile manual run --rm sync --interactive "$@"
-  elif [[ "$mode" == "non-interactive" ]]; then
-    log "Sync no interactivo..."
-    docker compose --profile manual run --rm sync --no-interactive "$@"
-  else
-    err "Modo de sync inválido: $mode"
-    exit 1
-  fi
+  log "Sync no interactivo..."
+
+  docker compose --profile manual run --rm sync
 }
 
 cmd="${1:-}"; shift || true
@@ -48,13 +40,11 @@ require_prereqs
 case "$cmd" in
   deploy)
     with_sync=false
-    sync_mode="non-interactive"
     sync_args=()
 
     while (($#)); do
       case "$1" in
         --with-sync) with_sync=true; shift ;;
-        --sync-mode) sync_mode="${2:-}"; shift 2 ;;
         --) shift; sync_args=("$@"); break ;;
         *) err "Opción inválida: $1"; usage; exit 1 ;;
       esac
@@ -73,14 +63,14 @@ case "$cmd" in
     docker compose up -d backend
 
     if [[ "$with_sync" == "true" ]]; then
-      run_sync "$sync_mode" false "${sync_args[@]}"
+      run_sync false "${sync_args[@]}"
     fi
 
     log "Deploy completado."
     docker compose ps
     ;;
   sync)
-    run_sync "${1:-non-interactive}" true "${@:2}"
+    run_sync true "$@"
     ;;
   *)
     usage
