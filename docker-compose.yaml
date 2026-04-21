@@ -72,6 +72,14 @@ services:
       STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL}
       GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
       REGION: ${REGION}
+    # healthcheck:
+    #   # Verifica que el puerto 5000 responda
+    #   # Usamos /bin/sh para comprobar si el puerto está abierto sin depender de curl
+    #   test: ["CMD-SHELL", "nc -z localhost 5000 || exit 1"]
+    #   interval: 10s
+    #   timeout: 15s
+    #   retries: 5
+    #   start_period: 10s # Le damos 10 seg para arrancar antes de empezar a checkear
     volumes:
       - storage_data:/var/lib/storage
     depends_on:
@@ -89,6 +97,8 @@ services:
     volumes:
       - ${SYNC_VOLUME_SOURCE:-sync_data}:${SYNC_VOLUME_TARGET:-/app/sync-data}
     depends_on:
+      storage:
+        condition: service_healthy
       redis:
         condition: service_healthy
       db:

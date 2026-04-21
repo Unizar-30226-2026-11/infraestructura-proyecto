@@ -51,7 +51,13 @@ case "$cmd" in
     done
 
     log "Levantando dependencias (db/redis/storage/frontend)..."
-    docker compose up -d db redis storage #frontend
+    # docker compose up -d db redis storage #frontend
+    if ! docker compose up -d --wait db redis storage; then
+      err "Las dependencias base no están sanas. Abortando."
+      exit 1
+    fi
+
+    log "Ejecutando migraciones..."
 
     log "Ejecutando migraciones..."
     if ! docker compose run --rm migrate; then
