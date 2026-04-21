@@ -19,9 +19,8 @@ graph TD
     F --> B[Backend]
     B --> R[Redis]
    B --> D[Postgres]
-    M[Migraciones Prisma] --> R
-   X[Sync manual] --> R
-   B --> D
+    M[Migraciones Prisma] --> D
+   X[Sync manual] --> D
 ```
 
 ## Requisitos
