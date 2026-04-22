@@ -18,9 +18,11 @@ graph TD
     U[Navegador del usuario] --> F[Frontend]
     F --> B[Backend]
     B --> R[Redis]
-   B --> D[Postgres]
+    B --> D[Postgres]
+    B --> S[Supabase Storage]
     M[Migraciones Prisma] --> D
    X[Sync manual] --> D
+   U --> S
 ```
 
 ## Requisitos
