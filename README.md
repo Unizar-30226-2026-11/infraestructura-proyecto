@@ -90,4 +90,4 @@ Para `sync`, cambia estas variables según el tipo de volumen que quieras usar:
 - Redis se ejecuta como servicio interno en Docker y usa un volumen llamado `redis_data`.
 - PostgreSQL usa el volumen `db_data` para persistencia.
 - Las migraciones fallan de forma explícita si el servicio `migrate` devuelve error; en ese caso el backend no se arranca.
-- Si despliegas en un servidor remoto, ajusta `CORS_ORIGIN`, `API_URL` y `SUPABASE_URL` a la URL pública real, no a `localhost`.
+- Si despliegas en un servidor remoto, ajusta `CORS_ORIGIN` y `SUPABASE_URL` a la URL pública real, no a `localhost`.
